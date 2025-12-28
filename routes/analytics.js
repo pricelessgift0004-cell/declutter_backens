@@ -1,33 +1,21 @@
 const express = require("express");
-const Event = require("../models/Event");
+const router = express.Router();
+const Product = require("../models/Product");
+const Admin = require("../models/Admin");
 const adminAuth = require("../middleware/adminAuth");
 
-const router = express.Router();
-
-router.get("/dashboard", adminAuth, async (req, res) => {
-  const totalProducts = await Event.countDocuments({ type: "view" });
-  const totalActivity = await Event.countDocuments();
-  const recentEvents = await Event.find().sort({ createdAt: -1 }).limit(10);
-
-  res.json({
-    totalProducts,
-    totalActivity,
-    recentEvents
-  });
-});
-
-// Chart-ready endpoint
-router.get("/chart", adminAuth, async (req, res) => {
-  const data = await Event.aggregate([
-    {
-      $group: {
-        _id: { $dayOfMonth: "$createdAt" },
-        count: { $sum: 1 }
-      }
-    }
+router.get("/stats", adminAuth, async (req, res) => {
+  const products = await Product.countDocuments();
+  const admins = await Admin.countDocuments();
+  const stockAgg = await Product.aggregate([
+    { $group: { _id: null, total: { $sum: "$stock" } } }
   ]);
 
-  res.json(data);
+  res.json({
+    products,
+    admins,
+    stock: stockAgg[0]?.total || 0
+  });
 });
 
 module.exports = router;
